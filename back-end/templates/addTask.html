@@ -1,0 +1,63 @@
+{% extends "index.html" %}
+{% block main %}
+
+<label for="title">Task Name:</label>
+<input type="text" name="title" width="25%" />
+<br><br>
+<label for="start">Time:</label>
+<input type="time" name="start" />
+<br><br>
+<label for="tags">Tags:</label><br>
+<textarea type="textbox" name="tags" id="tags" style="width: 50%;" placeholder="Add tags to your task to categorize"></textarea>
+<br><br>
+<button id="addCategory">+</button>
+<br><br>
+<div id="tagsList"></div>
+<label for="tags">Approximate Duration:</label><br>
+<input type="number" id="numberOfUnits" name="numberOfUnits" style="width: 10%;" min="1">
+<div class="dropdown" style="display: inline">
+    <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton1" data-bs-toggle="dropdown"
+        aria-expanded="false">
+    </button>
+    <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1">
+        <li><button class="dropdown-item">mins</button></li>
+        <li><button class="dropdown-item">hrs</button></li>
+        <li><button class="dropdown-item">days</button></li>
+    </ul>
+</div>
+<br><br>
+<script>
+    let button = document.querySelector("#addCategory");
+    let dropdownMenuButton = document.querySelector("#dropdownMenuButton1");
+    Array.from(document.querySelectorAll(".dropdown-item")).forEach((item) => {
+        item.addEventListener("click", () => dropdownMenuButton.textContent = item.textContent);
+    })
+    button.addEventListener("click", addTags);
+    function addTags() {
+        let tagsBox = document.querySelector("#tags");
+        let tags = tagsBox.value;
+        tags = tags.split(";");
+        let mainDiv = document.querySelector("#tagsList");
+        mainDiv.textContent = '';
+        for (let tag of tags) {
+            let div = document.createElement("div");
+            div.className="btn-group"
+            let label = document.createElement("button");
+            let del = document.createElement("button");
+            label.textContent = tag;
+            label.className="btn btn-primary";
+            label.disabled = true;
+            del.className="btn btn-primary";
+            del.textContent = 'x';
+            del.addEventListener("click", (e) => {
+                e.target.parentElement.remove();
+            })
+            div.appendChild(label);
+            div.appendChild(del);
+            mainDiv.appendChild(div);
+        }
+
+    }
+</script>
+
+{% endblock %}
