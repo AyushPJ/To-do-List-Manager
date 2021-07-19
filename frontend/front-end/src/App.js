@@ -90,6 +90,7 @@ class Form extends Component {
       status: "",
     };
     this.taskDesc = "";
+    this.statusDismiss = null;
   }
 
   updateValues(prop, val) {
@@ -99,19 +100,20 @@ class Form extends Component {
     this.setState({
       unit: e.target.textContent,
     });
+    
   }
-
+  
   submitForm(e) {
     let data = {
       taskName: this.taskName,
-      taskDate: this.taskDate,
-      startTime: this.startTime,
+      taskStart: new Date(this.taskDate+' '+this.startTime).toISOString(),
       tags: this.tags,
       reminders: this.reminders,
       taskDesc: this.taskDesc,
     };
     axios.post(process.env.REACT_APP_API_SERVER + "/addTasks/", { formData: data })
-      .then((resp) => {
+      .then(() => {
+        clearTimeout(this.statusDismiss);
         let newState = this.state;
         newState["status"] =
           <div className="alert alert-success d-flex align-items-center formElement" role="alert">
@@ -120,10 +122,15 @@ class Form extends Component {
             </div>
           </div>
         this.setState(newState);
-
+        this.statusDismiss= setTimeout(() => {
+          let newState = this.state;
+          newState["status"] = "";
+          this.setState(newState);  
+        }, 5000);   
       })
       .catch((error) => {
         console.error(error);
+        clearTimeout(this.statusDismiss);
         let newState = this.state;
         newState["status"] =
           <div className="alert alert-danger d-flex align-items-center formElement" role="alert">
@@ -132,6 +139,11 @@ class Form extends Component {
             </div>
           </div>
         this.setState(newState);
+        this.statusDismiss= setTimeout(() => {
+          let newState = this.state;
+          newState["status"] = "";
+          this.setState(newState);
+        }, 5000);
 
       });
     e.preventDefault();
@@ -179,9 +191,9 @@ class Form extends Component {
                   <AddButtonWithDropdown content="reminders" inputBoxID="#reminders" unitsDropdownID="#remindersUnit" callback={(prop, val) => this.updateValues(prop, val)} />
                 </div>
               </div>
-              <div class="form-floating formElement">
-                <textarea class="form-control" placeholder="Enter a description" id="floatingTextarea" onChange={(e) => this.updateValues("taskDesc", e.target.value)}></textarea>
-                <label for="floatingTextarea">Description</label>
+              <div className="form-floating formElement">
+                <textarea className="form-control" placeholder="Enter a description" id="floatingTextarea" onChange={(e) => this.updateValues("taskDesc", e.target.value)}></textarea>
+                <label htmlFor="floatingTextarea">Description</label>
               </div>
               <span className="formElement" >
                 <button type="submit" className="btn btn-primary">Add Task</button>
