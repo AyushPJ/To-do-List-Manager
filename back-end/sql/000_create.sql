@@ -7,7 +7,7 @@ drop table if exists reminders;
 create table tasks(
        id serial primary key,
        task_name text not null,
-       task_start timestamp not null,
+       task_due timestamp not null,
        task_desc text
 );
 create table tags (

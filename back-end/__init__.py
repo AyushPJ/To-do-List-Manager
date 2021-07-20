@@ -9,8 +9,8 @@ def create_app():
         DATABASE="App-TLM"
     )
     
-    from . import addTasks
-    app.register_blueprint(addTasks.bp)
+    from . import tasks
+    app.register_blueprint(tasks.bp)
 
     from . import db 
     db.init_app(app) 

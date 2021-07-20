@@ -1,5 +1,6 @@
 import re
 import datetime
+from typing import Tuple
 from flask import Blueprint
 from flask import render_template, request, redirect, url_for, jsonify
 
@@ -9,22 +10,42 @@ from flask import g
 from . import db
 
 
-bp = Blueprint("addTasks", "addTasks", url_prefix="/addTasks")
+bp = Blueprint("tasks", "tasks", url_prefix="/tasks")
 
 
-@bp.route("/", methods=["POST"])
+@bp.route("/getAllTasks")
+def allTasks():
+    conn = db.get_db() 
+                     
+    cursor = conn.cursor()
+    cursor.execute("select t.id, t.task_name, t.task_due, t.task_desc from tasks t") # Query
+    tasks = cursor.fetchall()
+    tasksWithTags = []
+    for task in tasks:
+        id = task[0]
+        cursor.execute("select tags.name from tags, tasks_tags tt where tt.task_id = %s and tags.id = tt.tag_id",(id,));
+        tags = [tag[0] for tag in cursor.fetchall()]
+        taskWithTags = task + (tags,)
+        tasksWithTags.append(taskWithTags)
+
+    if (request.accept_mimetypes.best == "application/json"):
+        return jsonify(dict(tasks = [dict(id = id, taskName=taskName, taskDue= taskDue, taskDesc = taskDesc, tags=tags) for id, taskName, taskDue, taskDesc, tags in tasksWithTags]))
+    else:
+        return "invalid request", 404
+
+@bp.route("/addTasks", methods=["POST"])
 def addTask():
     if request.method == "POST":
         formData = request.json["formData"]
         taskName = formData["taskName"]
-        taskStart = formData["taskStart"]
+        taskDue = formData["taskDue"]
         tags = formData["tags"]
         reminders = formData["reminders"]
         taskDesc = formData["taskDesc"]
-        taskStart = datetime.datetime.strptime(taskStart[0:-5], "%Y-%m-%dT%H:%M:%S")
+        taskStart = datetime.datetime.strptime(taskDue[0:-5], "%Y-%m-%dT%H:%M:%S")
         conn = db.get_db()
         cursor = conn.cursor()
-        cursor.execute("insert into tasks (task_name, task_start, task_desc) values (%s,%s,%s)",(taskName,taskStart,taskDesc))
+        cursor.execute("insert into tasks (task_name, task_due, task_desc) values (%s,%s,%s)",(taskName,taskDue,taskDesc))
         cursor.execute("select id from tasks order by id desc limit 1")
         taskID = cursor.fetchone()[0]
         for tag in tags:
@@ -51,4 +72,7 @@ def addTask():
             reminderID = cursor.fetchone()
             cursor.execute("insert into tasks_reminders values (%s,%s)",(taskID,reminderID))
             conn.commit()
-    return "done", 200
+        return "done", 200
+    else:
+        return "invalid request",404
+

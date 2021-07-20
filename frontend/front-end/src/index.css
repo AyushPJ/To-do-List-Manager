@@ -12,9 +12,6 @@ code {
     monospace;
 }
 
-*{
-  margin: 0 10px 0 0;
-}
 
 .addTask{
   display: flex;
