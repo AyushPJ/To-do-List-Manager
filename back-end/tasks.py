@@ -14,9 +14,8 @@ bp = Blueprint("tasks", "tasks", url_prefix="/tasks")
 
 
 @bp.route("/getAllTasks")
-def allTasks():
-    conn = db.get_db() 
-                     
+def getallTasks():
+    conn = db.get_db()                 
     cursor = conn.cursor()
     cursor.execute("select t.id, t.task_name, t.task_due, t.task_desc from tasks t") # Query
     tasks = cursor.fetchall()
@@ -27,14 +26,20 @@ def allTasks():
         tags = [tag[0] for tag in cursor.fetchall()]
         taskWithTags = task + (tags,)
         tasksWithTags.append(taskWithTags)
-
+    tasksWithTagsAndReminders = []
+    for task in tasksWithTags:
+        id = task[0]
+        cursor.execute("select r.id,r.reminder,r.remind_time from reminders r, tasks_reminders tr where tr.task_id = %s and r.id = tr.reminder_id",(id,));
+        reminders = [dict(id=id,reminder=reminder,remind_time=remind_time) for id,reminder,remind_time in cursor.fetchall()]
+        taskWithTagsAndReminders = task + (reminders,)
+        tasksWithTagsAndReminders.append(taskWithTagsAndReminders)
     if (request.accept_mimetypes.best == "application/json"):
-        return jsonify(dict(tasks = [dict(id = id, taskName=taskName, taskDue= taskDue, taskDesc = taskDesc, tags=tags) for id, taskName, taskDue, taskDesc, tags in tasksWithTags]))
+        return jsonify(dict(tasks = [dict(id = id, taskName=taskName, taskDue= taskDue, taskDesc = taskDesc, tags=tags, reminders = reminders) for id, taskName, taskDue, taskDesc, tags, reminders in tasksWithTagsAndReminders]))
     else:
         return "invalid request", 404
 
 @bp.route("/addTasks", methods=["POST"])
-def addTask():
+def addTasks():
     if request.method == "POST":
         formData = request.json["formData"]
         taskName = formData["taskName"]
@@ -71,7 +76,7 @@ def addTask():
             cursor.execute("select id from reminders order by id desc limit 1")
             reminderID = cursor.fetchone()
             cursor.execute("insert into tasks_reminders values (%s,%s)",(taskID,reminderID))
-            conn.commit()
+        conn.commit()
         return "done", 200
     else:
         return "invalid request",404

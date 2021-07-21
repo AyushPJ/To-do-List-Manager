@@ -12,6 +12,9 @@ def create_app():
     from . import tasks
     app.register_blueprint(tasks.bp)
 
+    from . import reminders
+    app.register_blueprint(reminders.bp)
+
     from . import db 
     db.init_app(app) 
 
