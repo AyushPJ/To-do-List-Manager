@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import './App.css';
-import { Collapse, Card} from 'react-bootstrap';
+import { Collapse, Card, Tabs, Tab, Nav} from 'react-bootstrap';
 
 
 
@@ -11,8 +11,6 @@ class ToDoListElement extends Component {
         this.state = {
             descRowVisible: false,
             descVisible: false,
-            task: this.props.task,
-            index: this.props.index,
             timeFromDue: "",
         }
     }
@@ -51,7 +49,7 @@ class ToDoListElement extends Component {
         else {
             timeFromDue = "Due in " + timeFromDue;
         }
-        let newState = Object.assign({},this.state);
+        let newState = Object.assign({}, this.state);
         newState["timeFromDue"] = timeFromDue;
         this.setState(newState);
     }
@@ -68,7 +66,7 @@ class ToDoListElement extends Component {
         if (this.state.descVisible)
             descButton = minusSVG;
 
-        let task = this.state.task;
+        let task = this.props.task;
         let due = new Date(task.taskDue).toLocaleString('en-ae');
         let tags = task.tags.map((tag, index) => {
             return (
@@ -80,7 +78,7 @@ class ToDoListElement extends Component {
             desc = task.taskDesc;
         return (
             <React.Fragment>
-                <tr key={"entry_" + this.state.index}>
+                <tr key={"entry_" + this.props.index}>
                     <td><input type="checkbox" checked={this.props.selected} onChange={(e) => this.props.callback(e, task.id)} /></td>
                     <th scope="row">{task.id}</th>
                     <td>{task.taskName}</td>
@@ -90,7 +88,7 @@ class ToDoListElement extends Component {
                 </tr>
                 <tr hidden={!this.state.descRowVisible}>
                     <td colSpan="6">
-                        <Collapse onEnter={() => this.togglePropState("descRowVisible")} onExited={() => this.togglePropState("descRowVisible")} in={this.state.descVisible} id={"desc_" + this.state.index} key={"desc_" + this.state.index}>
+                        <Collapse onEnter={() => this.togglePropState("descRowVisible")} onExited={() => this.togglePropState("descRowVisible")} in={this.state.descVisible} id={"desc_" + this.state.index} key={"desc_" + this.props.index}>
                             <Card>
                                 <Card.Body>
                                     <h5>Task Description</h5>
@@ -110,12 +108,21 @@ class ToDoList extends Component {
         super(props);
         this.state = {
             selected: [],
+            key: "incompleteTasks",
         };
         this.worker = null;
+
+    }
+
+    setKey(k) {
+        let newState = Object.assign({}, this.state);
+        newState.key = k;
+        newState.selected = [];
+        this.setState(newState);
     }
 
     selectUnselectAll(e) {
-        let newState = Object.assign({},this.state);
+        let newState = Object.assign({}, this.state);
         if (e.target.checked) {
             newState["selected"] = this.props.tasks.map((task) => {
                 return task.id;
@@ -127,7 +134,7 @@ class ToDoList extends Component {
         this.setState(newState);
     }
     selectUnselectOne(e, id) {
-        let newState = Object.assign({},this.state);
+        let newState = Object.assign({}, this.state);
         if (e.target.checked) {
             newState["selected"].push(id);
         }
@@ -138,29 +145,135 @@ class ToDoList extends Component {
     }
     render() {
 
-        let tableElements = this.props.tasks.map((task, index) => {
+        let tableElements = this.props[this.state.key].map((task, index) => {
             let selected = this.state.selected.indexOf(task.id) !== -1;
             return <ToDoListElement task={task} index={index} key={index} selected={selected} callback={(e, id) => this.selectUnselectOne(e, id)} />
         });
         return (
             <React.Fragment>
-                <div className="container">
-                    <table className="table table-condensed table-striped">
-                        <thead>
-                            <tr>
-                                <th><input type="checkbox" onChange={(e) => this.selectUnselectAll(e)} /></th>
-                                <th>#</th>
-                                <th>Task</th>
-                                <th>Due</th>
-                                <th>Tags</th>
-                                <th>Desc</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {tableElements}
-                        </tbody>
-                    </table>
-                </div>
+                <Tabs
+                    fill
+                    justify
+                    id="tasks-controlled-tab"
+                    activeKey={this.state.key}
+                    onSelect={(k) => this.setKey(k)}
+
+                >
+                    
+                    <Tab tabClassName="warning" eventKey="incompleteTasks" title="Incomplete">
+                        
+                        <div className="container">
+                            <table className="table table-condensed table-striped">
+                                <thead>
+                                    <tr>
+                                        <th><input type="checkbox" onChange={(e) => this.selectUnselectAll(e)} /></th>
+                                        <th>#</th>
+                                        <th>Task</th>
+                                        <th>Due</th>
+                                        <th>Tags</th>
+                                        <th>Desc</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+
+                                    {tableElements}
+
+                                </tbody>
+
+                            </table>
+                        </div>
+                    </Tab>
+
+                    <Tab tabClassName="danger" eventKey="overdueTasks" title="Overdue">
+                    <Nav className="justify-content-center sticky-options" activeKey="/home">
+                    <Nav.Item>
+                        <Nav.Link href="/home">Active</Nav.Link>
+                    </Nav.Item>
+                    <Nav.Item>
+                        <Nav.Link eventKey="link-1">Link</Nav.Link>
+                    </Nav.Item>
+                    <Nav.Item>
+                        <Nav.Link eventKey="link-2">Link</Nav.Link>
+                    </Nav.Item>
+                    <Nav.Item>
+                        <Nav.Link eventKey="disabled" disabled>
+                            Disabled
+                        </Nav.Link>
+                    </Nav.Item>
+                </Nav>
+                        <div className="container">
+                            <table className="table table-condensed table-striped">
+                                <thead>
+                                    <tr>
+                                        <th><input type="checkbox" onChange={(e) => this.selectUnselectAll(e)} /></th>
+                                        <th>#</th>
+                                        <th>Task</th>
+                                        <th>Due</th>
+                                        <th>Tags</th>
+                                        <th>Desc</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+
+                                    {tableElements}
+
+                                </tbody>
+
+                            </table>
+                        </div>
+                    </Tab>
+
+                    <Tab tabClassName="success" eventKey="doneTasks" title="Done">
+                        <div className="container">
+                            <table className="table table-condensed table-striped">
+                                <thead>
+                                    <tr>
+                                        <th><input type="checkbox" onChange={(e) => this.selectUnselectAll(e)} /></th>
+                                        <th>#</th>
+                                        <th>Task</th>
+                                        <th>Due</th>
+                                        <th>Tags</th>
+                                        <th>Desc</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+
+                                    {tableElements}
+
+                                </tbody>
+
+                            </table>
+                        </div>
+                    </Tab>
+                    <Tab tabClassName="plain" eventKey="allTasks" title="All Tasks">
+                        <div className="container">
+                            <table className="table table-condensed table-striped">
+                                <thead>
+                                    <tr>
+                                        <th><input type="checkbox" onChange={(e) => this.selectUnselectAll(e)} /></th>
+                                        <th>#</th>
+                                        <th>Task</th>
+                                        <th>Due</th>
+                                        <th>Tags</th>
+                                        <th>Desc</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+
+                                    {tableElements}
+
+                                </tbody>
+
+                            </table>
+                        </div>
+                    </Tab>
+                </Tabs>
+
+               
 
             </React.Fragment>
         );

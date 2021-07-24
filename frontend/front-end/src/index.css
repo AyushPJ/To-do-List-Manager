@@ -13,12 +13,10 @@ code {
 }
 
 
-.addTask{
+.validationElement{
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  margin: 0 auto;
-  padding: 10px 0;
+  justify-content: space-between;
 }
 
 .formElement{
@@ -32,3 +30,39 @@ code {
   flex-direction: column;
   justify-content: center;
 }
+
+.notificationElement{
+  display: flex;
+  justify-content: center;
+  padding-bottom: 10px;
+}
+
+.lastElement{
+  padding-bottom: 0px;
+}
+
+
+
+.nav-tabs .nav-item .plain.nav-link {
+  color: #0d6efd;
+}
+
+.nav-tabs .nav-item .warning.nav-link {
+  color: #ffc107;
+}
+
+.nav-tabs .nav-item .danger.nav-link {
+  color: red;
+}
+
+.nav-tabs .nav-item .success.nav-link {
+  color: green;
+}
+
+
+
+.tab-content {
+  border-top: transparent;
+  padding: 15px;
+}
+

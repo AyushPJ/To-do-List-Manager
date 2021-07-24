@@ -8,7 +8,8 @@ create table tasks(
        id serial primary key,
        task_name text not null,
        task_due timestamp not null,
-       task_desc text
+       task_desc text,
+       task_status text
 );
 create table tags (
        id serial primary key,
@@ -18,7 +19,8 @@ create table tags (
 create table reminders (
        id serial primary key,
        reminder text not null,
-       remind_time timestamp not null
+       remind_time timestamp not null,
+       on_schedule boolean
 );
 create table tasks_reminders(
      task_id integer not null references tasks(id) on delete cascade,

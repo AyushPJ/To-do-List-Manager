@@ -1,26 +1,41 @@
 import React, { Component } from 'react';
 import './App.css';
-import {Toast, ToastContainer} from 'react-bootstrap';
+import { Toast, ToastContainer } from 'react-bootstrap';
 
 class Reminders extends Component {
 
 
     render() {
-        let tasks = this.props.tasksReminders;
-
-        let toasts = tasks.map((taskReminder, index) => {
-            return (<Toast key={index+1} show={this.props.showToasts[index]} onClose={()=>this.props.dismissToast(index)} delay={10000} autohide>
+        let reminders = this.props.reminders;
+        let overdueToast = null;
+        let reminderToasts = null;
+        if(this.props.showOverdueToast===true)
+            overdueToast = <Toast key={0} show={this.props.showOverdueToast} onClose={() => this.props.nextOverdue()} delay={10000} autohide>
                 <Toast.Header>
                     <strong className="me-auto">tu-du</strong>
-                    <small className="text-muted">{"Due in "+taskReminder.reminder.reminder}</small>
+                    <small className="text-muted">{"Due Now"}</small>
                 </Toast.Header>
-                <Toast.Body>{taskReminder.task.taskName}</Toast.Body>
-            </Toast>);
-        });
+                <Toast.Body>{this.props.overdue.taskName}</Toast.Body>
+            </Toast>;
+
+        
+            reminderToasts = reminders.map((reminder, index) => {
+                if(this.props.showReminderToasts[index])
+                    return (<Toast key={index + 1} show={this.props.showReminderToasts[index]} onClose={() => this.props.nextReminder(index)} delay={10000} autohide>
+                        <Toast.Header>
+                            <strong className="me-auto">tu-du</strong>
+                            <small className="text-muted">{"Due in " + reminder.reminder.reminder}</small>
+                        </Toast.Header>
+                        <Toast.Body>{reminder.task.taskName}</Toast.Body>
+                    </Toast>);
+                else
+                    return null;
+            });
         return (
             <React.Fragment>
                 <ToastContainer position="bottom-end">
-                    {toasts}
+                    {reminderToasts}
+                    {overdueToast}
                 </ToastContainer>
             </React.Fragment>
         );

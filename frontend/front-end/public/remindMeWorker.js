@@ -8,21 +8,29 @@ onmessage = (e) => {
 
 function checkReminders(tasks){
     let now = new Date().getTime();
-    let currentReminders = [];
+    let alerts = {
+        reminders: [],
+        overdue: [],
+    };
     for(let task of tasks){
+        let taskDue = new Date(task.taskDue).getTime();
+        if(now>=taskDue){
+            alerts.overdue.push(task);
+        }
+        
         for(let reminder of task.reminders)
         {
             
-            let reminderTime = new Date(reminder.remind_time).getTime();
+            let reminderTime = new Date(reminder.remindTime).getTime();
             if(now >= reminderTime)
             {
-                currentReminders.push({task:task, reminder:reminder});
+                alerts.reminders.push({task:task, reminder:reminder});
                 break;
             }
         }
     }
-    if(currentReminders.length>0)
-        postMessage(currentReminders);
+    if(alerts.reminders.length || alerts.overdue.length)
+        postMessage(alerts);
     else
         setTimeout(()=>checkReminders(tasks),10000);
 }
