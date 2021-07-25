@@ -20,7 +20,7 @@ def markOverDueTasks():
     tasks = cursor.fetchall()
     now = datetime.datetime.utcnow()
     for task in tasks:
-        if task[2] != "done" or task[2] != "overdue":
+        if task[2] != "done" and task[2] != "overdue":
             if(task[1]<now):
                 cursor.execute("update tasks set task_status = 'overdue' where id = %s",(task[0],))
 
@@ -69,10 +69,14 @@ def queries(status, orderBy, order='asc'):
 
 @bp.route("/getAllTasks/<status>/<orderBy>/<order>")
 def getallTasks(status,orderBy,order):
-    if (request.accept_mimetypes.best == "application/json"): 
-        if('First-Call' in request.headers.keys() and  request.headers['First-Call']=='true'):
+    if (request.accept_mimetypes.best == "application/json"):
+ 
+        if('Mark-Overdue' in request.headers.keys() and  request.headers['Mark-Overdue']=='true'):
             markOverDueTasks()
+      
+        if('Mark-Reminders' in request.headers.keys() and  request.headers['Mark-Reminders']=='true'):
             Reminders.markBehindScheduleReminders()
+            
         conn = db.get_db()                 
         cursor = conn.cursor()
         query = queries(status,orderBy,order)         
@@ -153,6 +157,53 @@ def markOverdue():
         for task in tasks:
             taskID = task["id"]
             cursor.execute("update tasks set task_status = 'overdue' where id=%s",(taskID,))
+        conn.commit()
+        return "done", 200
+    else:
+        return "invalid request",404
+
+
+@bp.route("/deleteTasks", methods=["POST"])
+def deleteTasks():
+    if request.method == "POST":
+        tasksIDs = request.json["taskIDs"]
+        conn = db.get_db()
+        cursor = conn.cursor()
+        for taskID in tasksIDs:
+            cursor.execute("select reminder_id from tasks_reminders where task_id =%s",(taskID,))
+            for reminderID in cursor.fetchall():
+                cursor.execute("delete from reminders where id=%s",(reminderID[0],))
+            cursor.execute("delete from tasks where id=%s",(taskID,))
+        conn.commit()
+        return "done", 200
+    else:
+        return "invalid request",404
+
+
+@bp.route("/markDone", methods=["POST"])
+def markDone():
+    if request.method == "POST":
+        tasksIDs = request.json["taskIDs"]
+        conn = db.get_db()
+        cursor = conn.cursor()
+        for taskID in tasksIDs:
+            cursor.execute("select reminder_id from tasks_reminders where task_id =%s",(taskID,))
+            for reminderID in cursor.fetchall():
+                cursor.execute("delete from reminders where id=%s",(reminderID[0],))
+            cursor.execute("update tasks set task_status = 'done' where id=%s",(taskID,))
+        conn.commit()
+        return "done", 200
+    else:
+        return "invalid request",404
+
+@bp.route("/markIncomplete", methods=["POST"])
+def markIncomplete():
+    if request.method == "POST":
+        tasksIDs = request.json["taskIDs"]
+        conn = db.get_db()
+        cursor = conn.cursor()
+        for taskID in tasksIDs:
+            cursor.execute("update tasks set task_status = '' where id=%s",(taskID,))
         conn.commit()
         return "done", 200
     else:

@@ -190,7 +190,7 @@ class TaskForm extends Component {
         else
             newInvalidationStatus.name = false;
 
-        valid = valid && newState.invalidationStatus.name;
+        valid = valid && !newInvalidationStatus.name;
 
         if (this.taskDate.current.value.match(/\d+-\d+-\d+/) === null) {
             newInvalidationStatus.date = true;
@@ -209,11 +209,11 @@ class TaskForm extends Component {
             else
                 newInvalidationStatus.time = false;
 
-            valid = valid && newState.invalidationStatus.time;
+            valid = valid && !newInvalidationStatus.time;
 
         }
 
-        valid = valid && newState.invalidationStatus.date;
+        valid = valid && !newInvalidationStatus.date;
 
         newState.invalidationStatus = newInvalidationStatus;
 

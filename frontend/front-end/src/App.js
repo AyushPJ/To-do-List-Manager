@@ -108,7 +108,7 @@ class App extends Component {
     this.fetchFilteredOrderedTasks("overdueTasks", "overdue", "id", "asc");
     this.fetchFilteredOrderedTasks("allTasks", "allTasks", "id", "asc");
     this.fetchFilteredOrderedTasks("doneTasks", "done", "id", "asc");
-    this.fetchFilteredOrderedTasks("incompleteTasks", "incomplete", "id", "asc", true, true);
+    this.fetchFilteredOrderedTasks("incompleteTasks", "incomplete", "id", "asc", true, true, true);
   }
   setPropState(prop, val) {
     let newState = Object.assign({}, this.state);
@@ -125,18 +125,20 @@ class App extends Component {
       this.worker.terminate();
     this.worker = new window.Worker("./remindMeWorker.js");
     this.worker.addEventListener("message", event => {
+      console.log("worker responded ", event.data);
       this.pendingAlerts = event.data;
       this.clearReminders(this.pendingAlerts.reminders);
       this.markOverdue(this.pendingAlerts.overdue)
       this.getNextOverdue();
-      this.pendingAlerts.reminders.slice(0,3).map((_, index) => this.getNextReminder(index));
+      this.pendingAlerts.reminders.slice(0, 3).map((_, index) => this.getNextReminder(index));
     });
+    console.log("worker started");
     this.worker.postMessage(tasksToMonitor);
 
   }
 
-  fetchFilteredOrderedTasks(stateName, filter = "all", orderBy = "id", order = "asc", restartWorker = false, firstCall = false) {
-    axios.get(process.env.REACT_APP_API_SERVER + "/tasks/getAllTasks/" + filter + "/" + orderBy + "/" + order, { headers: { 'Accepts': 'application/json', 'First-Call': firstCall } })
+  fetchFilteredOrderedTasks(stateName, filter = "all", orderBy = "id", order = "asc", restartWorker = false, markOverdue = false, markRemindersBehindSchedule = false) {
+    axios.get(process.env.REACT_APP_API_SERVER + "/tasks/getAllTasks/" + filter + "/" + orderBy + "/" + order, { headers: {'Mark-Overdue': markOverdue, 'Mark-Reminders': markRemindersBehindSchedule,  'Accepts': 'application/json'}  })
       .then((resp) => {
         let newState = Object.assign({}, this.state);
         newState[stateName] = resp.data.tasks;
@@ -175,7 +177,6 @@ class App extends Component {
     setTimeout(() => {
       let newState = Object.assign({}, this.state);
       let slice = this.pendingAlerts.reminders.slice(0, 1);
-      console.log(slice);
       if (slice.length === 1) {
         newState.currentAlerts["reminders"][index] = slice[0];
         newState["showReminderToasts"][index] = true;
@@ -184,8 +185,8 @@ class App extends Component {
         newState.currentAlerts["reminders"][index] = '';
       this.pendingAlerts.reminders = this.pendingAlerts.reminders.slice(1);
       this.setState(newState);
-      if (this.pendingAlerts.reminders.length + this.pendingAlerts.overdue.length) {
-        this.restartWorker(this.state.incompleteTasks);
+      if (this.pendingAlerts.reminders.length + this.pendingAlerts.overdue.length === 0) {
+        this.fetchFilteredOrderedTasks("incompleteTasks", "incomplete", "id", "asc", true);
       }
     }, 1000);
   }
@@ -197,7 +198,6 @@ class App extends Component {
     setTimeout(() => {
       let newState = Object.assign({}, this.state);
       let slice = this.pendingAlerts.overdue.slice(0, 1);
-      console.log(slice);
       if (slice.length === 1) {
         newState.currentAlerts["overdue"] = slice[0];
         newState["showOverdueToast"] = true;
@@ -205,11 +205,13 @@ class App extends Component {
       else
         newState.currentAlerts["overdue"] = '';
 
-      this.pendingAlerts.overdue = this.pendingAlerts.overdue.slice(1);
+
       this.setState(newState);
       if (this.pendingAlerts.reminders.length + this.pendingAlerts.overdue.length === 0) {
-        this.restartWorker(this.state.incompleteTasks);
+        this.fetchFilteredOrderedTasks("overdueTasks", "overdue", "id", "asc");
+        this.fetchFilteredOrderedTasks("incompleteTasks", "incomplete", "id", "asc", true);
       }
+      this.pendingAlerts.overdue = this.pendingAlerts.overdue.slice(1);
     }, 1000);
   }
 
@@ -241,12 +243,53 @@ class App extends Component {
 
   }
 
+  markSelectedasDone(selected) {
+    axios.post(process.env.REACT_APP_API_SERVER + "/tasks/markDone", { taskIDs: selected })
+      .then(() => {
+        this.fetchFilteredOrderedTasks("overdueTasks", "overdue", "id", "asc");
+        this.fetchFilteredOrderedTasks("allTasks", "allTasks", "id", "asc");
+        this.fetchFilteredOrderedTasks("doneTasks", "done", "id", "asc");
+        this.fetchFilteredOrderedTasks("incompleteTasks", "incomplete", "id", "asc", true);
+
+      })
+      .catch(function (error) {
+        console.log(error);
+      })
+  }
+
+  markSelectedasIncomplete(selected) {
+    axios.post(process.env.REACT_APP_API_SERVER + "/tasks/markIncomplete", { taskIDs: selected })
+      .then(() => {
+        this.fetchFilteredOrderedTasks("incompleteTasks", "incomplete", "id", "asc", true, true);
+        this.fetchFilteredOrderedTasks("doneTasks", "done", "id", "asc");
+        this.fetchFilteredOrderedTasks("allTasks", "allTasks", "id", "asc");
+        this.fetchFilteredOrderedTasks("overdueTasks", "overdue", "id", "asc");
+      })
+      .catch(function (error) {
+        console.log(error);
+      })
+  }
+
+  deleteSelected(selected) {
+    axios.post(process.env.REACT_APP_API_SERVER + "/tasks/deleteTasks", { taskIDs: selected })
+      .then(() => {
+        this.fetchFilteredOrderedTasks("overdueTasks", "overdue", "id", "asc");
+        this.fetchFilteredOrderedTasks("allTasks", "allTasks", "id", "asc");
+        this.fetchFilteredOrderedTasks("doneTasks", "done", "id", "asc");
+        this.fetchFilteredOrderedTasks("incompleteTasks", "incomplete", "id", "asc", true);
+
+      })
+      .catch(function (error) {
+        console.log(error);
+      })
+  }
+
 
   render() {
     return (
       <React.Fragment>
         <Navbar numberofNotifications={this.state.overdueTasks.length + this.state.remindersBehindSchedule.length} setPropState={(prop, val) => this.setPropState(prop, val)} notificationsButtonRef={this.notificationsButtonRef} />
-        <ToDoList incompleteTasks={this.state.incompleteTasks} doneTasks={this.state.doneTasks} overdueTasks={this.state.overdueTasks} allTasks={this.state.allTasks} />
+        <ToDoList incompleteTasks={this.state.incompleteTasks} doneTasks={this.state.doneTasks} overdueTasks={this.state.overdueTasks} allTasks={this.state.allTasks} markSelectedasDone={(selected) => this.markSelectedasDone(selected)} markSelectedasIncomplete={(selected) => this.markSelectedasIncomplete(selected)} deleteSelected={(selected) => this.deleteSelected(selected)} />
         <UserTab showUserTab={this.state.showUserTab} setShowUserTab={(val) => this.setPropState("showUserTab", val)} />
         <Reminders overdue={this.state.currentAlerts.overdue} reminders={this.state.currentAlerts.reminders} showOverdueToast={this.state.showOverdueToast} showReminderToasts={this.state.showReminderToasts} nextOverdue={() => this.getNextOverdue()} nextReminder={(index) => this.getNextReminder(index)} />
         <Form modalShow={this.state.formShow} setModalShow={(val) => this.setPropState("formShow", val)} refetchTasks={() => this.refreshTasks()} />

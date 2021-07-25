@@ -34,13 +34,17 @@ code {
 .notificationElement{
   display: flex;
   justify-content: center;
-  padding-bottom: 10px;
+  margin-top: 10px;
 }
 
-.lastElement{
-  padding-bottom: 0px;
+.markDel{
+  display: flex;
+  justify-content: space-between;
 }
 
+.markInc{
+  display: inline;
+}
 
 
 .nav-tabs .nav-item .plain.nav-link {
@@ -52,11 +56,11 @@ code {
 }
 
 .nav-tabs .nav-item .danger.nav-link {
-  color: red;
+  color: #dc3545;
 }
 
 .nav-tabs .nav-item .success.nav-link {
-  color: green;
+  color: #198754;
 }
 
 
