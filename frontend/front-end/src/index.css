@@ -43,7 +43,20 @@ code {
 }
 
 .markInc{
-  display: inline;
+  display: flex;
+  width: 18%;
+  justify-content: space-between;
+
+}
+
+.toastAlerts{
+  position: fixed;
+  width: 500px;
+  height: 200px;
+  margin: auto;
+  top: 8%;
+  left: 0;
+  right: 0;
 }
 
 

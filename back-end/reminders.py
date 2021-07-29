@@ -1,17 +1,18 @@
 
 import datetime
 from flask import Blueprint
-from flask import render_template, request, redirect, url_for, jsonify
+from flask import request, jsonify
 
-from flask import g
 
 
 from . import db
+from . import pushNotifications
+
 
 
 bp = Blueprint("reminders", "reminders", url_prefix="/reminders")
 
-@bp.route("/getRemindersBehindSchedule")
+
 def getRemindersBehindSchedule():
     if (request.accept_mimetypes.best == "application/json"):
         conn = db.get_db()                 
@@ -33,7 +34,7 @@ def getRemindersBehindSchedule():
         return "invalid request", 404
 
 
-@bp.route("/deleteReminders", methods=["POST"])
+
 def deleteReminders():
     if request.method == "POST":
         conn = db.get_db()
@@ -57,4 +58,23 @@ def markBehindScheduleReminders():
     for reminder in reminders:
         if reminder[1] < now:
             cursor.execute("update reminders set on_schedule = false where id = %s",(reminder[0],))
-    conn.commit() 
+    conn.commit()
+
+
+def scheduleNextReminder():
+    from .scheduler import scheduler
+    with scheduler.app.app_context(): 
+        scheduler.remove_all_jobs()
+        conn = db.get_db()  
+        cursor = conn.cursor()
+        cursor.execute("select r.id, r.remind_time from reminders r order by remind_time limit 10")
+        reminders = cursor.fetchall()
+        i=0
+        for reminder in reminders:
+            print(reminder)
+            reminderID = reminder[0]
+            time = reminder[1]
+            print(time)
+            scheduler.add_job(func=pushNotifications.pushReminder,args=(reminderID,), next_run_time=time,id='scheduled-reminder'+str(i))
+            print('scheduled')
+            i=i+1

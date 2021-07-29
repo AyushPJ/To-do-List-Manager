@@ -1,13 +1,13 @@
 import re
 import datetime
 from flask import Blueprint
-from flask import render_template, request, redirect, url_for, jsonify
-
-from flask import g
-
+from flask import request, jsonify
+from flask_jwt_extended.view_decorators import jwt_required
+from flask_jwt_extended import current_user
 
 from . import reminders as Reminders
 from . import db
+
 
 
 bp = Blueprint("tasks", "tasks", url_prefix="/tasks")
@@ -31,58 +31,54 @@ def queries(status, orderBy, order='asc'):
     if status not in ["incomplete","done","overdue"]:
         if orderBy == 'id':
             if order == 'asc':
-                return "select * from tasks order by id;"
+                return "select t.* from tasks t, users u, users_tasks ut where u.id = %s and u.id = ut.user_id and ut.task_id = t.id order by t.id;"
             else:
-                return "select * from tasks order by id desc;"
+                return "select t.* from tasks t, users u, users_tasks ut where u.id = %s and u.id = ut.user_id and ut.task_id = t.id order by t.id desc;"
 
         elif orderBy == 'name':
             if order == 'asc':
-                return "select * from tasks order by task_name;"
+                return "select t.* from tasks t, users u, users_tasks ut where u.id = %s and u.id = ut.user_id and ut.task_id = t.id order by t.task_name;"
             else:
-                return "select * from tasks order by task_name desc;"
+                return "select t.* from tasks t, users u, users_tasks ut where u.id = %s and u.id = ut.user_id and ut.task_id = t.id order by t.task_name desc;"
         elif orderBy == 'due':
             if order == 'asc':
-                return "select * from tasks order by due;"
+                return "select t.* from tasks t, users u, users_tasks ut where u.id = %s and u.id = ut.user_id and ut.task_id = t.id order by t.due;"
             else:
-                return "select * from tasks order by due desc;"
+                return "select t.* from tasks t, users u, users_tasks ut where u.id = %s and u.id = ut.user_id and ut.task_id = t.id order by t.due desc;"
     else:
         if orderBy == 'id':
             if order == 'asc':
-                return "select * from tasks where task_status = %s order by id;"
+                return "select t.* from tasks t, users u, users_tasks ut where u.id = %s and t.task_status = %s and u.id = ut.user_id and ut.task_id = t.id order by t.id;"
             else:
-                return "select * from tasks where task_status = %s order by id desc;"
+                return "select t.* from tasks t, users u, users_tasks ut where u.id = %s and t.task_status = %s and u.id = ut.user_id and ut.task_id = t.id order by t.id desc;"
 
         elif orderBy == 'name':
             if order == 'asc':
-                return "select * from tasks where task_status = %s order by task_name;"
+                return "select t.* from tasks t, users u, users_tasks ut where u.id = %s and t.task_status = %s and u.id = ut.user_id and ut.task_id = t.id order by t.task_name;"
             else:
-                return "select * from tasks where task_status = %s order by task_name desc;"
+                return "select t.* from tasks t, users u, users_tasks ut where u.id = %s and t.task_status = %s and u.id = ut.user_id and ut.task_id = t.id order by t.task_name desc;"
         elif orderBy == 'due':
             if order == 'asc':
-                return "select * from tasks where task_status = %s order by due;"
+                return "select t.* from tasks t, users u, users_tasks ut where u.id = %s and t.task_status = %s and u.id = ut.user_id and ut.task_id = t.id order by t.task_due;"
             else:
-                return "select * from tasks where task_status = %s order by due desc;"
+                return "select t.* from tasks t, users u, users_tasks ut where u.id = %s and t.task_status = %s and u.id = ut.user_id and ut.task_id = t.id order by t.task_due desc;"
 
 
 
 
 
 @bp.route("/getAllTasks/<status>/<orderBy>/<order>")
+@jwt_required()
 def getallTasks(status,orderBy,order):
     if (request.accept_mimetypes.best == "application/json"):
- 
-        if('Mark-Overdue' in request.headers.keys() and  request.headers['Mark-Overdue']=='true'):
-            markOverDueTasks()
-      
-        if('Mark-Reminders' in request.headers.keys() and  request.headers['Mark-Reminders']=='true'):
-            Reminders.markBehindScheduleReminders()
-            
+        userID = current_user[0]      
         conn = db.get_db()                 
         cursor = conn.cursor()
         query = queries(status,orderBy,order)         
-        if status=="incomplete":
-            status='' 
-        cursor.execute(query,(status,))  
+        if status not in ["incomplete","done","overdue"]:
+            cursor.execute(query,(userID,)) 
+        else:
+            cursor.execute(query,(userID,status)) 
         tasks = cursor.fetchall()
         tasksWithTags = []
         for task in tasks:
@@ -106,8 +102,10 @@ def getallTasks(status,orderBy,order):
 
 
 @bp.route("/addTasks", methods=["POST"])
+@jwt_required()
 def addTasks():
     if request.method == "POST":
+        userID = current_user[0]
         formData = request.json["formData"]
         taskName = formData["taskName"]
         taskDue = formData["taskDue"]
@@ -117,9 +115,11 @@ def addTasks():
         taskStart = datetime.datetime.strptime(taskDue[0:-5], "%Y-%m-%dT%H:%M:%S")
         conn = db.get_db()
         cursor = conn.cursor()
-        cursor.execute("insert into tasks (task_name, task_due, task_desc, task_status) values (%s,%s,%s,'')",(taskName,taskDue,taskDesc))
+        cursor.execute("insert into tasks (task_name, task_due, task_desc, task_status) values (%s,%s,%s,'incomplete')",(taskName,taskDue,taskDesc))
         cursor.execute("select id from tasks order by id desc limit 1")
         taskID = cursor.fetchone()[0]
+        cursor.execute("insert into users_tasks values (%s,%s)",(userID,taskID))
+
         for tag in tags:
             cursor.execute("select count(*) from tags where name = %s",(tag,))
             if(cursor.fetchone()[0]==0):
@@ -144,6 +144,7 @@ def addTasks():
             reminderID = cursor.fetchone()
             cursor.execute("insert into tasks_reminders values (%s,%s)",(taskID,reminderID))
         conn.commit()
+        Reminders.scheduleNextReminder()
         return "done", 200
     else:
         return "invalid request",404
@@ -164,16 +165,20 @@ def markOverdue():
 
 
 @bp.route("/deleteTasks", methods=["POST"])
+@jwt_required()
 def deleteTasks():
     if request.method == "POST":
-        tasksIDs = request.json["taskIDs"]
+        userID = current_user[0]
+        taskIDs = request.json["taskIDs"]
         conn = db.get_db()
         cursor = conn.cursor()
-        for taskID in tasksIDs:
-            cursor.execute("select reminder_id from tasks_reminders where task_id =%s",(taskID,))
+        cursor.execute("select t.id from tasks t, users_tasks ut where ut.task_id = t.id and ut.user_id = %s and t.id in %s",(userID,tuple(taskIDs)))
+        taskIDs = cursor.fetchall()
+        for taskID in taskIDs:
+            cursor.execute("select tr.reminder_id from tasks_reminders tr where tr.task_id =%s",(taskID,))
             for reminderID in cursor.fetchall():
                 cursor.execute("delete from reminders where id=%s",(reminderID[0],))
-            cursor.execute("delete from tasks where id=%s",(taskID,))
+            cursor.execute("delete from tasks where id = %s",(taskID,))
         conn.commit()
         return "done", 200
     else:
@@ -181,12 +186,16 @@ def deleteTasks():
 
 
 @bp.route("/markDone", methods=["POST"])
+@jwt_required()
 def markDone():
     if request.method == "POST":
-        tasksIDs = request.json["taskIDs"]
+        taskIDs = request.json["taskIDs"]
+        userID = current_user[0]
         conn = db.get_db()
         cursor = conn.cursor()
-        for taskID in tasksIDs:
+        cursor.execute("select t.id from tasks t, users_tasks ut where ut.task_id = t.id and ut.user_id = %s and t.id in %s",(userID,tuple(taskIDs)))
+        taskIDs = cursor.fetchall()
+        for taskID in taskIDs:
             cursor.execute("select reminder_id from tasks_reminders where task_id =%s",(taskID,))
             for reminderID in cursor.fetchall():
                 cursor.execute("delete from reminders where id=%s",(reminderID[0],))
@@ -197,14 +206,19 @@ def markDone():
         return "invalid request",404
 
 @bp.route("/markIncomplete", methods=["POST"])
+@jwt_required()
 def markIncomplete():
     if request.method == "POST":
-        tasksIDs = request.json["taskIDs"]
+        taskIDs = request.json["taskIDs"]
         conn = db.get_db()
         cursor = conn.cursor()
-        for taskID in tasksIDs:
-            cursor.execute("update tasks set task_status = '' where id=%s",(taskID,))
+        userID = current_user[0]
+        cursor.execute("select t.id from tasks t, users_tasks ut where ut.task_id = t.id and ut.user_id = %s and t.id in %s",(userID,tuple(taskIDs)))
+        taskIDs = cursor.fetchall()
+        for taskID in taskIDs:
+            cursor.execute("update tasks set task_status = 'incomplete' where id=%s",(taskID,))
         conn.commit()
+       
         return "done", 200
     else:
         return "invalid request",404

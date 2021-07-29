@@ -1,11 +1,9 @@
 import React, { Component, createRef } from 'react';
-import { Modal, Dropdown, Form, Col, FloatingLabel, Row, Container } from 'react-bootstrap'
+import { Modal, Dropdown, Form, FloatingLabel } from 'react-bootstrap'
 import axios from 'axios';
+import getCookie from './tools';
 
 class AddButtonWithDropdown extends Component {
-    constructor(props) {
-        super(props);
-    }
 
     render() {
         let dropdownElements = this.props.elements.map((title, index) => {
@@ -235,7 +233,7 @@ class TaskForm extends Component {
                 reminders: this.state.reminders,
                 taskDesc: this.taskDesc.current.value,
             };
-            axios.post(process.env.REACT_APP_API_SERVER + "/tasks/addTasks", { formData: data })
+            axios.post("/tasks/addTasks", {formData: data}, { headers: { 'X-CSRF-TOKEN': getCookie('csrf_access_token'),  'Accepts': 'application/json' }})
                 .then(() => {
                     clearTimeout(this.statusDismiss);
                     let newState = Object.assign({}, this.state);
