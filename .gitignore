@@ -1,6 +1,7 @@
 frontend/node_modules
 back-end/__pycache__
 .vscode
-back-end/private_key.txt
-back-end/public_key.txt
-back-end/vapid_private.pem
+vapid_private.pem
+private_key.txt
+public_key.txt
+database_url.txt

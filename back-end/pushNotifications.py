@@ -1,7 +1,8 @@
 
 from flask import Blueprint
 from flask import app, request, jsonify, current_app
-from flask_jwt_extended import current_user
+from flask.cli import with_appcontext
+from flask_jwt_extended import current_user 
 
 import json, os
 from flask_jwt_extended.view_decorators import jwt_required
@@ -12,6 +13,12 @@ from pywebpush import webpush,WebPushException
 from . import db
 from . import reminders as Reminders
 bp = Blueprint("pushNotifications", "pushNotifications", url_prefix="/pushNotifications")
+    
+    
+DER_BASE64_ENCODED_PRIVATE_KEY_FILE_PATH = ''
+DER_BASE64_ENCODED_PUBLIC_KEY_FILE_PATH = ''
+
+
 
 DER_BASE64_ENCODED_PRIVATE_KEY_FILE_PATH = os.path.join(os.getcwd(),"private_key.txt")
 DER_BASE64_ENCODED_PUBLIC_KEY_FILE_PATH = os.path.join(os.getcwd(),"public_key.txt")
