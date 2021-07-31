@@ -3,15 +3,13 @@ import psycopg2
 import click 
 from flask import current_app, g
 from flask.cli import with_appcontext
-import urllib.parse as urlparse
-
 def get_db():
     if 'db' not in g: # If we've not initialised the database, then
                       # initialise it
         # Notice how we take the name of the database from the
         # config. We initialised this in the __init__.py file.
-        dbURL = current_app.config['DATABASE_URL'] 
-        g.db = psycopg2.connect(dbURL, sslmode='require')
+        dbname = current_app.config['DATABASE_NAME'] 
+        g.db = psycopg2.connect(dbname=dbname)
     return g.db
 
 

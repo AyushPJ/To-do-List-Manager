@@ -7,7 +7,7 @@ class Login extends Component {
     constructor(props) {
         super(props);
         this.state = {
-            authorized: false,
+            authorized: null,
             key: 'login',
             invalid: {
                 login: false,

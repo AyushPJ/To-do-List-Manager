@@ -1,8 +1,6 @@
 
-import datetime
-from threading import current_thread
 from flask import Blueprint
-from flask import request, jsonify, current_app
+from flask import current_app
 import re
 
 

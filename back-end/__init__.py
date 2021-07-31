@@ -18,7 +18,6 @@ from flask_jwt_extended import get_jwt_identity
 from flask_jwt_extended import JWTManager
 from flask_jwt_extended import set_access_cookies
 from flask_jwt_extended import unset_jwt_cookies
-import os
 from apscheduler.executors.pool import ThreadPoolExecutor,ProcessPoolExecutor
 
 def create_app():
@@ -26,7 +25,7 @@ def create_app():
     CORS(app)
 
     app.config.from_mapping(
-        DATABASE_URL=os.environ['DATABASE_URL'],
+        DATABASE_NAME='App-TLM',
         SCHEDULER_API_ENABLED = True,
         SCHEDULER_TIMEZONE = utc,
         SCHEDULER_EXECUTORS= {'default': ThreadPoolExecutor(50), 'processpool' :ProcessPoolExecutor(10)},

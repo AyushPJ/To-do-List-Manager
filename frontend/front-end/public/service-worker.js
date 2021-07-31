@@ -7,9 +7,10 @@ self.addEventListener('push', (event) => {
         catch (error) {
             console.error(error);
         }
-        let title = 'tu-du';
-        let options = {};
+       
         if (data.category) {
+            let title = 'tu-du';
+            let options = {};
             if (data.category === "test") {
                 title = title + ": Test";
                 options = {
@@ -37,12 +38,15 @@ self.addEventListener('push', (event) => {
                     badge: '/logo512.png',
                 };
             }
+            if(data.category === 'test')
+                event.waitUntil(self.registration.showNotification(title, options));
+
+            else
+                event.waitUntil(setTimeout(()=>self.registration.showNotification(title, options), 3000));
 
         }
-        
-        
-        event.waitUntil(setTimeout(()=>self.registration.showNotification(title, options), 3000));
-
+        console.log("Bad data format.")
+      
     }
     else {
         console.log("This push event has no data.")
