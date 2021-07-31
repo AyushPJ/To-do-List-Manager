@@ -1,6 +1,7 @@
 from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
+from apscheduler.events import EVENT_JOB_MISSED
 
 
 from flask import Flask, request, jsonify
@@ -19,6 +20,8 @@ from flask_jwt_extended import JWTManager
 from flask_jwt_extended import set_access_cookies
 from flask_jwt_extended import unset_jwt_cookies
 
+from apscheduler.executors.pool import ThreadPoolExecutor,ProcessPoolExecutor
+
 def create_app():
     app = Flask("To-do List Manager")
     CORS(app)
@@ -27,12 +30,14 @@ def create_app():
         DATABASE="App-TLM",
         SCHEDULER_API_ENABLED = True,
         SCHEDULER_TIMEZONE = utc,
-        SCHEDULER_JOB_DEFAULTS = {'max_instances': 11},
+        SCHEDULER_EXECUTORS= {'default': ThreadPoolExecutor(50), 'processpool' :ProcessPoolExecutor(10)},
+        SCHEDULER_JOB_DEFAULTS={'misfire_grace_time': 60, 'max_instances': 50},
         SECRET_KEY="dev",
         JWT_SECRET_KEY = "super-secret",
         JWT_COOKIE_SECURE = False,
         JWT_TOKEN_LOCATION = "cookies",
         JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1),
+        SCHEDULED_JOBS = 0,
     )
     
     from . import tasks
@@ -50,6 +55,7 @@ def create_app():
     if(not scheduler.running):   
         scheduler.init_app(app)
         scheduler.start()
+        scheduler.add_listener(reminders.handleMissedReminders,EVENT_JOB_MISSED)
     
     
     jwt = JWTManager(app)
@@ -123,7 +129,7 @@ def create_app():
     @app.route("/isAuthorized")
     @jwt_required()
     def isAuthorized():
-        return jsonify({'msg':f'logged in as {current_user[0]}'})
+        return jsonify({'msg':f'logged in as {current_user[1]}', 'username':f'{current_user[1]}'})
 
     @app.route("/logout", methods=["POST"])
     def logout():

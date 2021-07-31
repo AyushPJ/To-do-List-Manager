@@ -28,9 +28,9 @@ create table tags (
 create table reminders (
        id serial primary key,
        reminder text not null,
-       remind_time timestamp not null,
-       on_schedule boolean
+       remind_time timestamp not null
 );
+
 create table tasks_reminders(
      task_id integer not null references tasks(id) on delete cascade,
      reminder_id integer not null references reminders(id) on delete cascade

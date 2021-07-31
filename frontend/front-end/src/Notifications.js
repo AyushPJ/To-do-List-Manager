@@ -1,4 +1,5 @@
 import React, { Component } from 'react';
+import { Form } from 'react-bootstrap';
 import './App.css';
 import getCookie from './tools';
 
@@ -8,7 +9,9 @@ class Notifications extends Component {
         super(props);
         this.swRegistration = null;
         this.applicationServerPublicKey = null;
+        this.state = { isSubscribed: false };
     }
+
 
     urlBase64ToUint8Array(base64String) {
         const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -25,11 +28,11 @@ class Notifications extends Component {
         return outputArray;
     }
 
-    registerServiceWorker() {
-        navigator.serviceWorker.register('./service-worker.js')
+    registerServiceWorker(nextAction) {
+        navigator.serviceWorker.register(process.env.PUBLIC_URL+'/service-worker.js')
             .then((registration) => {
                 this.swRegistration = registration;
-                this.askPermission();
+                nextAction();
             })
             .catch((err) => {
                 console.error("Unable to register SW", err);
@@ -47,35 +50,35 @@ class Notifications extends Component {
         })
             .then((permissionResult) => {
                 if (permissionResult !== 'granted')
-                    throw new Error("Permission denied.");
+                    console.error("Notifications blocked (Permission denied).");
                 else
                     this.getApplicationServerPublicKey();
 
             });
     }
 
-    getApplicationServerPublicKey(){
+    getApplicationServerPublicKey() {
         fetch('/pushNotifications/getApplicationServerPublicKey', {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
             },
         })
-        .then((resp)=>{
-            if(resp.status === 401)
-                this.props.setPropState('authorized',false);
-            else if(resp.status !== 200)
-                throw new Error('Bad status code from server.');
+            .then((resp) => {
+                if (resp.status === 401)
+                    this.props.setPropState('authorized', false);
+                else if (resp.status !== 200)
+                    console.error('Bad status code from server.');
 
-            return resp.json();
-            
-        })
-        .then((responseData)=>{
-            if (responseData && responseData['Application-Server-Public-Key']) {
-                this.applicationServerPublicKey = responseData['Application-Server-Public-Key'];
-                this.subscribeUserToPush();
-            }
-        });
+                return resp.json();
+
+            })
+            .then((responseData) => {
+                if (responseData && responseData['Application-Server-Public-Key']) {
+                    this.applicationServerPublicKey = responseData['Application-Server-Public-Key'];
+                    this.subscribeUserToPush();
+                }
+            });
     }
 
     subscribeUserToPush() {
@@ -108,6 +111,20 @@ class Notifications extends Component {
 
                 console.log('User is unsubscribed.');
 
+            })
+            .then(() => {
+                fetch('/pushNotifications/delete-subscription', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': getCookie('csrf_access_token'),
+                    },
+                })
+                    .then((response) => {
+                        if (!response.ok) {
+                            console.error('Bad status code from server.');
+                        }
+                    })
             });
     }
 
@@ -122,7 +139,7 @@ class Notifications extends Component {
         })
             .then((response) => {
                 if (!response.ok) {
-                    throw new Error('Bad status code from server.');
+                    console.error('Bad status code from server.');
                 }
 
                 return response.json();
@@ -130,7 +147,7 @@ class Notifications extends Component {
             })
             .then((responseData) => {
                 if (!(responseData.data && responseData.data.success)) {
-                    throw new Error('Bad response from server');
+                    console.error('Bad response from server');
                 }
             });
     }
@@ -145,7 +162,7 @@ class Notifications extends Component {
         })
             .then((response) => {
                 if (!response.ok) {
-                    throw new Error('Bad status code from server.');
+                    console.error('Bad status code from server.');
                 }
 
                 return response.json();
@@ -153,9 +170,21 @@ class Notifications extends Component {
             })
             .then((responseData) => {
                 if (!(responseData.data && responseData.data.success)) {
-                    throw new Error('Bad response from server');
+                    console.error('Bad response from server');
                 }
             });
+    }
+
+    switchHandler(e) {
+        if (e.target.checked) {
+            this.registerServiceWorker(()=>{this.askPermission()});
+            this.props.setPropState('notificationSubscriptionStatus',true);
+        }
+        else {
+            this.registerServiceWorker(()=>{this.unsubscribeUser()});
+            this.props.setPropState('notificationSubscriptionStatus',false);
+
+        }
     }
 
     
@@ -163,8 +192,8 @@ class Notifications extends Component {
     render() {
         return (
             <React.Fragment>
-                <button className="btn btn-primary" onClick={() => this.registerServiceWorker()}>Enable Notifications</button>
-                <button className="btn btn-secondary" onClick={() => this.testPushMsg()}>Test Notifications</button>
+                <Form.Switch checked={this.props.notificationSubscriptionStatus} label="Enable Notifications" onChange={(e) => this.switchHandler(e)} />
+                <button className="btn btn-link" onClick={() => this.testPushMsg()}>Test Notifications</button>
             </React.Fragment>
 
         )

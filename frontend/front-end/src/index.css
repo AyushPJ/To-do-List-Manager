@@ -12,6 +12,27 @@ code {
     monospace;
 }
 
+@import 
+url('https://fonts.googleapis.com/css2?family=WindSong:wght@500&display=swap');
+
+.logo{
+  font-family: 'WindSong', cursive;
+  font-weight: bolder;
+}
+
+.homeLogo{
+  display: flex;
+  font-size: 1000%;
+  justify-content: center;
+  padding-top: 10%;
+  
+}
+
+.tagline{
+  display: flex;
+  justify-content: center;
+  padding-bottom: 10%;
+}
 
 .validationElement{
   display: flex;
@@ -31,11 +52,6 @@ code {
   justify-content: center;
 }
 
-.notificationElement{
-  display: flex;
-  justify-content: center;
-  margin-top: 10px;
-}
 
 .markDel{
   display: flex;
@@ -81,5 +97,13 @@ code {
 .tab-content {
   border-top: transparent;
   padding: 15px;
+}
+
+.user-settings {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  height: 100%;
+
 }
 

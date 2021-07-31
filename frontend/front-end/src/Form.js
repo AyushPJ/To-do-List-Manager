@@ -17,7 +17,7 @@ class AddButtonWithDropdown extends Component {
         return (
             <React.Fragment>
 
-                <button type="button" className="btn btn-outline-secondary" onClick={() => this.props.add()}>+</button>
+                <button type="button" title={"Add " + this.props.content.slice(0, -1)} className="btn btn-outline-secondary" onClick={() => this.props.add()}>+</button>
                 <Dropdown>
                     <Dropdown.Toggle variant="btn btn-outline-secondary dropdown-toggle">
                         View {this.props.content}
@@ -64,7 +64,7 @@ class TaskForm extends Component {
             taskTimeFeedback: "Please enter a valid time",
             reminderFeedback: "Please enter a valid date and time",
         };
-        
+
         this.statusDismiss = null;
     }
 
@@ -100,30 +100,42 @@ class TaskForm extends Component {
 
         }
     }
+
+    validateReminder(value,unit) {
+        let msOffset = 0;
+        if (unit === "min/s")
+            msOffset = 60000;
+        else if (unit === "hr/s")
+            msOffset = 3600000;
+        else if (unit === "day/s")
+            msOffset = 86400000;
+        
+        if ((new Date(this.taskDate.current.value + ' ' + this.taskTime.current.value).getTime() - msOffset * value) <= new Date().getTime()) {
+            let newState = Object.assign({}, this.state);
+            let newInvalidationStatus = Object.assign({}, this.state.invalidationStatus);
+            newInvalidationStatus.reminders = true;
+            newState.invalidationStatus = newInvalidationStatus
+            newState.reminderFeedback = "Reminders must be in the future.";
+            this.setState(newState);
+            return false;
+        }
+        else {
+            let newState = Object.assign({}, this.state);
+            newState.invalidationStatus.reminders = false;
+            this.setState(newState);
+            return true;
+        }
+    }
     addReminder() {
         let input = this.remindersInputBoxRef.current;
         if (input.value !== "") {
             if (this.taskDate.current.value !== '') {
                 if (this.taskTime.current.value !== '') {
                     let unit = this.state.unit;
-                    let msOffset = 0;
-                    if (unit === "min/s")
-                        msOffset = 60000;
-                    else if (unit === "hr/s")
-                        msOffset = 3600000;
-                    else if (unit === "day/s")
-                        msOffset = 86400000;
-                    if ((new Date(this.taskDate.current.value + ' ' + this.taskTime.current.value).getTime() - msOffset * input.value) <= new Date().getTime()) {
-                        let newState = Object.assign({}, this.state);
-                        newState.invalidationStatus.reminders = true;
-                        newState.reminderFeedback = "Reminders must be in the future.";
-                        this.setState(newState);
-                    }
-                    else {
-                        let newState = Object.assign({}, this.state);
-                        newState.invalidationStatus.reminders = false;
-                        this.setState(newState);
-                        let reminders = this.state.reminders;
+                   
+                    if(this.validateReminder(input.value,unit)) {
+                     
+                        let reminders = this.state.reminders.slice();
                         if (this.state.reminders.findIndex((reminder) => reminder === (input.value + ' ' + unit)) === -1) {
                             reminders.push(input.value + ' ' + unit);
                         }
@@ -217,6 +229,16 @@ class TaskForm extends Component {
 
         this.setState(newState);
 
+        valid = valid  && this.state.reminders.every((reminder)=>{
+            let value = /\d+/.exec(reminder)[0];
+            let unit = /[a-z/]+/.exec(reminder)[0];
+            return this.validateReminder(value,unit);
+        });
+
+        
+
+        
+
         return valid;
     }
 
@@ -233,7 +255,7 @@ class TaskForm extends Component {
                 reminders: this.state.reminders,
                 taskDesc: this.taskDesc.current.value,
             };
-            axios.post("/tasks/addTasks", {formData: data}, { headers: { 'X-CSRF-TOKEN': getCookie('csrf_access_token'),  'Accepts': 'application/json' }})
+            axios.post("/tasks/addTasks", { formData: data }, { headers: { 'X-CSRF-TOKEN': getCookie('csrf_access_token'), 'Accepts': 'application/json' } })
                 .then(() => {
                     clearTimeout(this.statusDismiss);
                     let newState = Object.assign({}, this.state);
@@ -285,6 +307,7 @@ class TaskForm extends Component {
             status = successAlert;
         else if (this.state.status === "fail")
             status = failAlert;
+
         return (
             <Modal show={this.props.modalShow} onHide={() => this.props.setModalShow(false)} onExit={() => this.resetState()} id="addTaskModal" size="lg" centered>
                 <Modal.Header >
@@ -334,7 +357,7 @@ class TaskForm extends Component {
                         </div>
                         <div id="remindersDiv" className="formElement">
                             <div className="input-group">
-                                <Form.Control isInvalid={this.state.invalidationStatus.reminders} type="number" ref={this.remindersInputBoxRef} placeholder="Remind me (when?) from Start Time" id="reminders" min="1" />
+                                <Form.Control disabled={!this.props.notificationSubscriptionStatus} isInvalid={this.state.invalidationStatus.reminders} type="number" ref={this.remindersInputBoxRef} placeholder="Remind me (when?) from Start Time" id="reminders" min="1" aria-describedby="reminderHelpBlock" />
                                 <Dropdown>
                                     <Dropdown.Toggle ref={this.unitsDropdownRef} variant="btn btn-outline-secondary" id="remindersUnit">
                                         {this.state.unit}
@@ -350,6 +373,9 @@ class TaskForm extends Component {
                                     {this.state.reminderFeedback}
                                 </Form.Control.Feedback>
                             </div>
+                            <Form.Text id="reminderHelpBlock" muted>
+                                You must enable notifications in 'User Setings' to get reminders
+                            </Form.Text>
 
                         </div>
                         <Form.Floating className="mb-3 formElement">

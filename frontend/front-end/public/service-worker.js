@@ -1,19 +1,47 @@
 self.addEventListener('push', (event) => {
     if (event.data) {
-        const title = 'tu-du';
-        const options = {
-            body: 'This notification has data attached to it that is printed ' +
-                'to the console when it\'s clicked.',
-            tag: 'data-notification',
-            data: {
-                time: new Date(Date.now()).toString(),
-                message: 'Hello, World!'
+        let data = {};
+        try {
+            data = event.data.json();
+        }
+        catch (error) {
+            console.error(error);
+        }
+        let title = 'tu-du';
+        let options = {};
+        if (data.category) {
+            if (data.category === "test") {
+                title = title + ": Test";
+                options = {
+                    body: data.msg,
+                    tag: 'test-notification',
+                    icon: '/logo512.png',
+                    badge: '/logo512.png',
+                };
             }
-        };
+            else if (data.category === 'reminder') {
+                title = title + ": Reminder";
+                options = {
+                    body: data.task.taskName + " due in " + data.task.reminder,
+                    tag: 'reminder_' + data.task.id,
+                    icon: '/logo512.png',
+                    badge: '/logo512.png',
+                };
+            }
+            else if(data.category === 'overdue'){
+                title = title + ": Overdue";
+                options = {
+                    body: data.task.taskName + " due now",
+                    tag: 'overdue_' + data.task.id,
+                    icon: '/logo512.png',
+                    badge: '/logo512.png',
+                };
+            }
 
-
-
-        event.waitUntil(self.registration.showNotification(title, options));
+        }
+        
+        
+        event.waitUntil(setTimeout(()=>self.registration.showNotification(title, options), 3000));
 
     }
     else {
@@ -22,8 +50,8 @@ self.addEventListener('push', (event) => {
 });
 
 self.addEventListener('notificationclick', (event) => {
-    const urlToOpen = new URL(self.location.origin).href;
-
+    const urlToOpen = new URL(self.location.origin + '/dashboard').href;
+    console.log(urlToOpen);
     const promiseChain = clients.matchAll({
         type: 'window',
         includeUncontrolled: true
@@ -32,7 +60,6 @@ self.addEventListener('notificationclick', (event) => {
 
         for (let i = 0; i < windowClients.length; i++) {
             const windowClient = windowClients[i];
-            console.log(windowClient);
             if (windowClient.url === urlToOpen) {
                 matchingClient = windowClient;
                 break;

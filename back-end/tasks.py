@@ -13,10 +13,10 @@ from . import db
 bp = Blueprint("tasks", "tasks", url_prefix="/tasks")
 
 
-def markOverDueTasks():
+def markOverDueTasks(userID):
     conn = db.get_db()
     cursor = conn.cursor()
-    cursor.execute("select t.id, t.task_due, t.task_status from tasks t")
+    cursor.execute("select t.id, t.task_due, t.task_status from tasks t, users_tasks ut where ut.user_id = %s and t.id = ut.task_id",(userID,))
     tasks = cursor.fetchall()
     now = datetime.datetime.utcnow()
     for task in tasks:
@@ -71,7 +71,9 @@ def queries(status, orderBy, order='asc'):
 @jwt_required()
 def getallTasks(status,orderBy,order):
     if (request.accept_mimetypes.best == "application/json"):
-        userID = current_user[0]      
+        userID = current_user[0]
+        if 'Mark-Overdue-Tasks' in request.headers.keys() and request.headers['Mark-Overdue-Tasks']=="true":
+            markOverDueTasks(userID)     
         conn = db.get_db()                 
         cursor = conn.cursor()
         query = queries(status,orderBy,order)         
@@ -90,7 +92,7 @@ def getallTasks(status,orderBy,order):
         tasksWithTagsAndReminders = []
         for task in tasksWithTags:
             id = task[0]
-            cursor.execute("select r.id,r.reminder,r.remind_time from reminders r, tasks_reminders tr where tr.task_id = %s and r.id = tr.reminder_id and r.on_schedule = true",(id,));     
+            cursor.execute("select r.id,r.reminder,r.remind_time from reminders r, tasks_reminders tr where tr.task_id = %s and r.id = tr.reminder_id",(id,));     
             reminders = [dict(id=id,reminder=reminder,remindTime=remindTime) for id,reminder,remindTime in cursor.fetchall()]
             taskWithTagsAndReminders = task + (reminders,)
             tasksWithTagsAndReminders.append(taskWithTagsAndReminders)
@@ -139,7 +141,7 @@ def addTasks():
             else:
                 delta = datetime.timedelta(days=val)
             remind_time = taskStart-delta
-            cursor.execute("insert into reminders (reminder, remind_time, on_schedule) values (%s,%s,true)",(reminder,remind_time))
+            cursor.execute("insert into reminders (reminder, remind_time) values (%s,%s)",(reminder,remind_time))
             cursor.execute("select id from reminders order by id desc limit 1")
             reminderID = cursor.fetchone()
             cursor.execute("insert into tasks_reminders values (%s,%s)",(taskID,reminderID))

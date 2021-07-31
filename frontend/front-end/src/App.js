@@ -3,7 +3,7 @@ import React, { Component } from 'react';
 import './App.css';
 import axios from 'axios';
 import ToDoList from './Todolist'
-import Form from './Form'
+import TaskForm from './Form'
 import Notifications from './Notifications';
 import { Offcanvas, Toast, ToastContainer } from 'react-bootstrap';
 import getCookie from './tools';
@@ -16,7 +16,9 @@ class Navbar extends Component {
       <nav className="navbar navbar-expand-lg sticky-top navbar-dark bg-dark">
 
         <div className="container-fluid">
-          <span className="navbar-brand">tu-du</span>
+          <span className="navbar-brand logo">
+            tu-du
+          </span>
 
           <div className="collapse navbar-collapse" id="navbarNavAltMarkup">
             <div className="navbar-nav">
@@ -47,6 +49,17 @@ class Navbar extends Component {
 }
 
 class UserTab extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      enableTest: false,
+    }
+  }
+
+
+  getUsername() {
+
+  }
 
   logout() {
     axios.post("/logout", { headers: { 'X-CSRF-TOKEN': getCookie('csrf_access_token'), 'Accepts': 'application/json' } })
@@ -65,12 +78,16 @@ class UserTab extends Component {
     return (
       <Offcanvas placement="end" id="userTab" show={this.props.showUserTab} onHide={() => this.props.setShowUserTab(false)}>
         <Offcanvas.Header>
-          <Offcanvas.Title>Your Account</Offcanvas.Title>
+          <Offcanvas.Title>User Settings</Offcanvas.Title>
           <button type="button" className="btn-close text-reset" onClick={() => this.props.setShowUserTab(false)}></button>
         </Offcanvas.Header>
         <Offcanvas.Body>
-          <Notifications setPropState = {(prop,val)=> this.props.setPropState(prop,val)}/>
-          <button className="btn btn-secondary" onClick={() => this.logout()}>Log Out</button>
+          <div className="user-settings">
+          <h1>Username: {this.props.username}</h1>
+          
+          <Notifications notificationSubscriptionStatus={this.props.notificationSubscriptionStatus} setPropState={(prop, val) => this.props.setPropState(prop, val)} />
+          <button className="btn btn-link" onClick={() => this.logout()}>Log Out</button>
+          </div>
         </Offcanvas.Body>
 
       </Offcanvas>
@@ -91,6 +108,8 @@ class App extends Component {
       showUserTab: false,
       showToastAlert: false,
       authorized: null,
+      username: null,
+      notificationSubscriptionStatus: false,
     };
     this.toastAlertMessage = "";
   }
@@ -110,8 +129,8 @@ class App extends Component {
 
 
 
-  fetchFilteredOrderedTasks(stateName, filter = "all", orderBy = "id", order = "asc") {
-    axios.get("/tasks/getAllTasks/" + filter + "/" + orderBy + "/" + order, { headers: {'Accepts': 'application/json' } })
+  fetchFilteredOrderedTasks(stateName, filter = "all", orderBy = "id", order = "asc", markOverDueTasks=false) {
+    axios.get("/tasks/getAllTasks/" + filter + "/" + orderBy + "/" + order, { headers: { 'mark-overdue-tasks': markOverDueTasks, 'Accepts': 'application/json' } })
       .then((resp) => {
         let newState = Object.assign({}, this.state);
         newState[stateName] = resp.data.tasks;
@@ -196,8 +215,10 @@ class App extends Component {
   checkUserAuthorized() {
     axios.get("/isAuthorized", { headers: { 'Accepts': 'application/json' } })
       .then((resp) => {
-        this.setPropState('authorized', true)
-        this.fetchFilteredOrderedTasks("overdueTasks", "overdue", "id", "asc");
+        this.setPropState('username', resp.data.username);
+        this.setPropState('authorized', true);
+        this.checkSubscriptionStatus();
+        this.fetchFilteredOrderedTasks("overdueTasks", "overdue", "id", "asc", true);
         this.fetchFilteredOrderedTasks("allTasks", "allTasks", "id", "asc");
         this.fetchFilteredOrderedTasks("doneTasks", "done", "id", "asc");
         this.fetchFilteredOrderedTasks("incompleteTasks", "incomplete", "id", "asc");
@@ -205,10 +226,35 @@ class App extends Component {
       .catch((error) => {
         console.log(error);
         if (error.response.status === 401) {
-          alert("Invalid token. Please log in from the home page.");
+          alert("Session expired. Please log in again.");
           this.setPropState('authorized', false);
         }
       })
+  }
+
+  checkSubscriptionStatus() {
+    fetch('/pushNotifications/get-subscription-status', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+      .then((response) => {
+        if (!response.ok) {
+          console.error('Bad status code from server.');
+        }
+
+        return response.json();
+
+      })
+      .then((responseData) => {
+        if (responseData.data && responseData.data.status !== undefined) {
+          this.setState({ notificationSubscriptionStatus: responseData.data.status })
+        }
+        else {
+          console.error('Bad response from server');
+        }
+      });
   }
 
   render() {
@@ -227,8 +273,8 @@ class App extends Component {
           </ToastContainer>
           <Navbar setPropState={(prop, val) => this.setPropState(prop, val)} />
           <ToDoList incompleteTasks={this.state.incompleteTasks} doneTasks={this.state.doneTasks} overdueTasks={this.state.overdueTasks} allTasks={this.state.allTasks} markSelectedasDone={(selected) => this.markSelectedasDone(selected)} markSelectedasIncomplete={(selected) => this.markSelectedasIncomplete(selected)} deleteSelected={(selected) => this.deleteSelected(selected)} />
-          <UserTab showUserTab={this.state.showUserTab} setShowUserTab={(val) => this.setPropState("showUserTab", val)} setPropState={(prop, val) => this.setPropState(prop, val)} />
-          <Form modalShow={this.state.formShow} setModalShow={(val) => this.setPropState("formShow", val)} refetchTasks={() => this.refreshTasks()} />
+          <UserTab notificationSubscriptionStatus= {this.state.notificationSubscriptionStatus} username={this.state.username} showUserTab={this.state.showUserTab} setShowUserTab={(val) => this.setPropState("showUserTab", val)} setPropState={(prop, val) => this.setPropState(prop, val)} />
+          <TaskForm notificationSubscriptionStatus={this.state.notificationSubscriptionStatus} modalShow={this.state.formShow} setModalShow={(val) => this.setPropState("formShow", val)} refetchTasks={() => this.refreshTasks()} />
 
         </React.Fragment>
       );

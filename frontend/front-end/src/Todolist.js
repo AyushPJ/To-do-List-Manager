@@ -25,33 +25,35 @@ class ToDoListElement extends Component {
         this.setState(newState);
     }
 
-    remainingTime(taskDue) {
-        let now = new Date().getTime();
-        let due = new Date(taskDue).getTime();
-        let diff = due - now;
-        let overdue = false;
-        if (diff < 0)
-            overdue = true;
-        diff = Math.abs(diff);
-        const msInDay = 86400000;
-        const msInHour = 3600000;
-        const msInMin = 60000;
-        let timeFromDue = "";
-        if (diff > msInDay)
-            timeFromDue = Math.round(diff / msInDay) + " day/s";
-        else if (diff > msInHour)
-            timeFromDue = Math.round(diff / msInHour) + " hour/s";
-        else
-            timeFromDue = Math.round(diff / msInMin) + " min/s";
-        if (overdue) {
-            timeFromDue = timeFromDue + " overdue";
+    remainingTime(taskDue, taskStatus) {
+        if (taskStatus !== 'done') {
+            let now = new Date().getTime();
+            let due = new Date(taskDue).getTime();
+            let diff = due - now;
+            let overdue = false;
+            if (diff < 0)
+                overdue = true;
+            diff = Math.abs(diff);
+            const msInDay = 86400000;
+            const msInHour = 3600000;
+            const msInMin = 60000;
+            let timeFromDue = "";
+            if (diff > msInDay)
+                timeFromDue = Math.round(diff / msInDay) + " day/s";
+            else if (diff > msInHour)
+                timeFromDue = Math.round(diff / msInHour) + " hour/s";
+            else
+                timeFromDue = Math.round(diff / msInMin) + " min/s";
+            if (overdue) {
+                timeFromDue = timeFromDue + " overdue";
+            }
+            else {
+                timeFromDue = "Due in " + timeFromDue;
+            }
+            let newState = Object.assign({}, this.state);
+            newState["timeFromDue"] = timeFromDue;
+            this.setState(newState);
         }
-        else {
-            timeFromDue = "Due in " + timeFromDue;
-        }
-        let newState = Object.assign({}, this.state);
-        newState["timeFromDue"] = timeFromDue;
-        this.setState(newState);
     }
     render() {
 
@@ -76,18 +78,21 @@ class ToDoListElement extends Component {
         let desc = <span className="text-muted"><i>(empty description)</i></span>;
         if (task.taskDesc !== "")
             desc = task.taskDesc;
+        let task_status = null;
+        if(this.props.category === "allTasks")
+            task_status = <td>{task.taskStatus}</td>;
         return (
             <React.Fragment>
                 <tr key={"entry_" + this.props.index}>
                     <td><input type="checkbox" checked={this.props.selected} onChange={(e) => this.props.callback(e, task.id)} /></td>
-                    <th scope="row">{task.id}</th>
-                    <td>{task.taskName}</td>
-                    <td title={this.state.timeFromDue} onMouseOver={() => this.remainingTime(task.taskDue)}>{due}</td>
+                    <th scope="row">{task.taskName}</th>
+                    <td title={this.state.timeFromDue} onMouseOver={() => this.remainingTime(task.taskDue,task.taskStatus)}>{due}</td>
                     <td>{tags}</td>
+                    {task_status}
                     <td><button className="btn btn-outline-secondary btn-sm" onClick={() => this.togglePropState("descVisible")}>{descButton}</button></td>
                 </tr>
                 <tr hidden={!this.state.descRowVisible}>
-                    <td colSpan="6">
+                    <td colSpan={(this.props.category === "allTasks")? 6:5}>
                         <Collapse onEnter={() => this.togglePropState("descRowVisible")} onExited={() => this.togglePropState("descRowVisible")} in={this.state.descVisible} id={"desc_" + this.state.index} key={"desc_" + this.props.index}>
                             <Card>
                                 <Card.Body>
@@ -164,7 +169,7 @@ class ToDoList extends Component {
 
         let tableElements = this.props[this.state.key].map((task, index) => {
             let selected = this.state.selected.indexOf(task.id) !== -1;
-            return <ToDoListElement task={task} index={index} key={index} selected={selected} callback={(e, id) => this.selectUnselectOne(e, id)} />
+            return <ToDoListElement category={this.state.key} task={task} index={index} key={index} selected={selected} callback={(e, id) => this.selectUnselectOne(e, id)} />
         });
         return (
             <React.Fragment>
@@ -205,7 +210,6 @@ class ToDoList extends Component {
                                 <thead>
                                     <tr>
                                         <th><input ref={this.checkBoxRefs.incompleteTasks} type="checkbox" onChange={(e) => this.selectUnselectAll(e)} /></th>
-                                        <th>#</th>
                                         <th>Task</th>
                                         <th>Due</th>
                                         <th>Tags</th>
@@ -251,7 +255,6 @@ class ToDoList extends Component {
 
                                     <tr>
                                         <th><input ref={this.checkBoxRefs.overdueTasks} type="checkbox" onChange={(e) => this.selectUnselectAll(e)} /></th>
-                                        <th>#</th>
                                         <th>Task</th>
                                         <th>Due</th>
                                         <th>Tags</th>
@@ -298,7 +301,6 @@ class ToDoList extends Component {
                                 <thead>
                                     <tr>
                                         <th><input ref={this.checkBoxRefs.doneTasks} type="checkbox" onChange={(e) => this.selectUnselectAll(e)} /></th>
-                                        <th>#</th>
                                         <th>Task</th>
                                         <th>Due</th>
                                         <th>Tags</th>
@@ -354,10 +356,10 @@ class ToDoList extends Component {
                                 <thead>
                                     <tr>
                                         <th><input ref={this.checkBoxRefs.allTasks} type="checkbox" onChange={(e) => this.selectUnselectAll(e)} /></th>
-                                        <th>#</th>
                                         <th>Task</th>
                                         <th>Due</th>
                                         <th>Tags</th>
+                                        <th>Status</th>
                                         <th>Desc</th>
                                     </tr>
                                 </thead>
