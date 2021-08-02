@@ -8,16 +8,12 @@ import json, os
 from flask_jwt_extended.view_decorators import jwt_required
 
 from pywebpush import webpush,WebPushException
-
+import re
 
 from . import db
 from . import reminders as Reminders
 bp = Blueprint("pushNotifications", "pushNotifications", url_prefix="/pushNotifications")
     
-    
-DER_BASE64_ENCODED_PRIVATE_KEY_FILE_PATH = ''
-DER_BASE64_ENCODED_PUBLIC_KEY_FILE_PATH = ''
-
 
 
 DER_BASE64_ENCODED_PRIVATE_KEY_FILE_PATH = os.path.join(os.getcwd(),"private_key.txt")
@@ -26,9 +22,6 @@ DER_BASE64_ENCODED_PUBLIC_KEY_FILE_PATH = os.path.join(os.getcwd(),"public_key.t
 VAPID_PRIVATE_KEY = open(DER_BASE64_ENCODED_PRIVATE_KEY_FILE_PATH, "r+").readline().strip("\n")
 VAPID_PUBLIC_KEY = open(DER_BASE64_ENCODED_PUBLIC_KEY_FILE_PATH, "r+").read().strip("\n")
 
-VAPID_CLAIMS = {
-"sub": "mailto:pjayush@gmail.com"
-}
 
 @bp.route("/getApplicationServerPublicKey",)
 @jwt_required()
@@ -41,11 +34,15 @@ def isValidSaveRequest(req):
     return True
 
 def send_web_push(subscription_information, message_body):
+    aud = re.search(r"^https://[a-z.]+",subscription_information['endpoint']).group()
     return webpush(
         subscription_info=subscription_information,
         data=message_body,
         vapid_private_key=VAPID_PRIVATE_KEY,
-        vapid_claims=VAPID_CLAIMS
+        vapid_claims={
+            "sub": "mailto:pjayush@gmail.com",
+            "aud": aud
+        }
     )     
 
 @bp.route("/save-subscription", methods=['POST'])
